@@ -8,6 +8,7 @@ app.use(bodyParser.json());
 
 // webhook 測試 endpoint
 app.post('/webhook', (req, res) => {
+  console.log('✅ LINE webhook 收到請求'); // ⬅️ 加這行
   console.log('✅ 收到 LINE Webhook:', JSON.stringify(req.body, null, 2));
   res.sendStatus(200);
 });
