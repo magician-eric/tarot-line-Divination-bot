@@ -1,8 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const axios = require('axios');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Render 要求使用 process.env.PORT
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
@@ -29,12 +31,13 @@ app.post('/webhook', async (req, res) => {
     }
   }
 
-// 根目錄測試 endpoint
+  res.sendStatus(200); // ✅ 補這行回覆 LINE
+});
+
 app.get('/', (req, res) => {
   res.send('🔮 Tarot Bot Server is running!');
 });
 
-// 必須有這行才能讓 Render 知道你的 server 是活的！
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
@@ -61,4 +64,3 @@ async function replyText(replyToken, messages) {
     console.error('❌ 回覆失敗：', err.response?.data || err.message);
   }
 }
-
