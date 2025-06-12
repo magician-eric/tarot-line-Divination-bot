@@ -42,15 +42,14 @@ app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
 
-async function replyText(replyToken, messages) {
-  const replyMessages = messages.map(text => ({ type: 'text', text }));
-
-  try {
+async function sendStepMessages(userId, messages, delay = 800) {
+  for (let i = 0; i < messages.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, i * delay));
     await axios.post(
-      'https://api.line.me/v2/bot/message/reply',
+      'https://api.line.me/v2/bot/message/push',
       {
-        replyToken,
-        messages: replyMessages
+        to: userId,
+        messages: [{ type: 'text', text: messages[i] }]
       },
       {
         headers: {
@@ -59,8 +58,5 @@ async function replyText(replyToken, messages) {
         }
       }
     );
-    console.log('✅ 成功回覆 LINE 使用者');
-  } catch (err) {
-    console.error('❌ 回覆失敗：', err.response?.data || err.message);
   }
 }
