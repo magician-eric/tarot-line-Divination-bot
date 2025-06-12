@@ -10,17 +10,20 @@ app.use(bodyParser.json());
 
 app.post('/webhook', async (req, res) => {
   console.log('✅ LINE webhook 收到請求');
-  console.log('✅ 收到 LINE Webhook:', JSON.stringify(req.body, null, 2));
-
   const events = req.body.events;
 
   for (const event of events) {
     if (event.type === 'message' && event.message.type === 'text') {
       const userMessage = event.message.text.trim();
       const replyToken = event.replyToken;
+      const userId = event.source.userId;
 
       if (userMessage === '我想占卜') {
-        await replyText(replyToken, [
+        // ✅ 這裡原本是一次性 reply
+        // await replyText(replyToken, [...]);
+
+        // ✅ 改成這樣（用 push，一句一句講）
+        sendStepMessages(userId, [
           '好的，那我先洗牌',
           '正在洗牌...',
           '啪啦啪啦啪啦啪啦...',
@@ -31,9 +34,9 @@ app.post('/webhook', async (req, res) => {
     }
   }
 
-  res.sendStatus(200); // ✅ 補這行回覆 LINE
+  // 一定要回應 LINE API 一個 200 OK
+  res.status(200).end();
 });
-
 app.get('/', (req, res) => {
   res.send('🔮 Tarot Bot Server is running!');
 });
