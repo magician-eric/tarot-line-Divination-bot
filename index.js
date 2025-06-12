@@ -31,7 +31,12 @@ app.post('/webhook', async (req, res) => {
           '請問你這次想抽幾張牌？請輸入 1～5 的數字'
         ]);
       }
-          if (userState[userId]?.stage === 'await_card_count') {
+    }
+  }
+
+  // 一定要回應 LINE API 一個 200 OK
+  res.status(200).end();
+            if (userState[userId]?.stage === 'await_card_count') {
       const numberMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '壹': 1, '貳': 2, '參': 3, '肆': 4, '伍': 5 };
       const match = userMessage.match(/(?:抽|想.*抽)?\s*([1-5]|[一二三四五壹貳參肆伍])\s*張?/);
 
@@ -58,11 +63,6 @@ app.post('/webhook', async (req, res) => {
         }
       }
     }
-    }
-  }
-
-  // 一定要回應 LINE API 一個 200 OK
-  res.status(200).end();
 });
 
 app.get('/', (req, res) => {
