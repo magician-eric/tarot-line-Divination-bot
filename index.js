@@ -5,10 +5,15 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const userStates = {}; // 使用者狀態暫存
-
 app.use(bodyParser.json());
 
+// ✅ 這是你設定的狀態：開關是否啟用占卜功能
+const isAutoReplyEnabled = true;
+
+// ✅ 使用者狀態紀錄
+const userStates = {};
+
+// === Webhook 接收 LINE 訊息 ===
 app.post('/webhook', async (req, res) => {
   console.log('✅ LINE webhook 收到請求');
   const events = req.body.events;
@@ -19,9 +24,14 @@ app.post('/webhook', async (req, res) => {
       const replyToken = event.replyToken;
       const userId = event.source.userId;
 
-      // === 【第一步】啟動占卜流程 ===
+      // ✅ 判斷是否啟用占卜功能
+      if (!isAutoReplyEnabled) {
+        console.log('🚫 自動回應關閉中，忽略訊息');
+        continue;
+      }
+
+      // ✅ 起始指令：我想占卜
       if (userMessage === '我想占卜') {
-        userStates[userId] = { stage: 'await_card_count' };
         sendStepMessages(userId, [
           '好的，那我先洗牌',
           '正在洗牌...',
@@ -32,74 +42,58 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
-      // === 只有開啟占卜流程的狀態才會處理下面的邏輯 ===
-      if (userStates[userId]?.stage === 'await_card_count') {
-        const numberMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '壹': 1, '貳': 2, '參': 3, '肆': 4, '伍': 5 };
-        const numMatch = userMessage.match(/([1-5]|[一二三四五壹貳參肆伍])/);
+      // ✅ 解析張數（1～5），含中文數字
+      const numberMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '壹': 1, '貳': 2, '參': 3, '肆': 4, '伍': 5 };
+      const numMatch = userMessage.match(/([1-5]|[一二三四五壹貳參肆伍])/);
 
-        if (numMatch) {
-          let num = numMatch[1];
-          if (isNaN(num)) {
-            num = numberMap[num];
-          } else {
-            num = parseInt(num);
-          }
-
-          if (num >= 1 && num <= 5) {
-            userStates[userId] = {
-              stage: 'await_draw_method',
-              numCards: num
-            };
-
-            await replyText(replyToken, [
-              `好的，我幫你抽 ${num} 張牌 🃏`,
-              `你想要怎麼抽？`,
-              `1️⃣ 隨機抽`,
-              `2️⃣ 自己輸入 ${num} 個數字（1～78 之間），例如：7 26 54`
-            ]);
-            return;
-          }
+      if (numMatch && !userStates[userId]?.stage) {
+        let num = numMatch[1];
+        if (isNaN(num)) {
+          num = numberMap[num];
+        } else {
+          num = parseInt(num);
         }
 
-        await replyText(replyToken, [
-          '請輸入 1～5 的數字，或中文數字（例如：三、五）'
-        ]);
-        return;
-      }
+        if (num >= 1 && num <= 5) {
+          userStates[userId] = { stage: 'await_draw_method', numCards: num };
 
-      // === [之後擴充]：抽牌方式選擇與結果處理邏輯寫在這裡 ===
-      if (userStates[userId]?.stage === 'await_draw_method') {
-        await replyText(replyToken, ['📌（此功能尚未實作，稍後補上）']);
-        return;
+          await replyText(replyToken, [
+            `好的，我幫你抽 ${num} 張牌 🃏`,
+            `你想要怎麼抽？`,
+            `1️⃣ 隨機抽`,
+            `2️⃣ 自己輸入 ${num} 個數字（1～78 之間），例如：7 26 54`
+          ]);
+          return;
+        }
       }
-
-      // 沒有任何占卜流程就忽略
     }
   }
 
-  res.status(200).end();
+  res.status(200).end(); // 一定要給 LINE 回 200
 });
 
+// === 首頁測試用 ===
 app.get('/', (req, res) => {
   res.send('🔮 Tarot Bot Server is running!');
 });
 
+// === 啟動 Server ===
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
 
-// 🔁 一句一句講話用 push（非 reply）
+// === 一句一句傳送（Push）===
 function sendStepMessages(userId, messages) {
   const LINE_TOKEN = process.env.LINE_CHANNEL_TOKEN;
   const url = 'https://api.line.me/v2/bot/message/push';
 
-  messages.forEach((text, i) => {
+  messages.forEach((message, i) => {
     setTimeout(() => {
       axios.post(
         url,
         {
           to: userId,
-          messages: [{ type: 'text', text }]
+          messages: [{ type: 'text', text: message }]
         },
         {
           headers: {
@@ -107,14 +101,16 @@ function sendStepMessages(userId, messages) {
             Authorization: `Bearer ${LINE_TOKEN}`
           }
         }
-      ).catch(err => {
-        console.error('❌ Push Message 失敗:', err.response?.data || err.message);
+      ).then(() => {
+        console.log(`✅ 傳送訊息：「${message}」`);
+      }).catch(err => {
+        console.error('❌ 傳送錯誤：', err.response?.data || err.message);
       });
-    }, i * 1000); // 每句間隔 1 秒
+    }, i * 1200); // 每句間隔 1.2 秒
   });
 }
 
-// ✅ reply 回覆文字
+// === 回覆文字訊息 ===
 async function replyText(replyToken, messages) {
   const replyMessages = messages.map(text => ({ type: 'text', text }));
 
@@ -137,4 +133,3 @@ async function replyText(replyToken, messages) {
     console.error('❌ 回覆失敗：', err.response?.data || err.message);
   }
 }
-
