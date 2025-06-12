@@ -81,15 +81,18 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // === 一句一句傳送（Push）===
-function sendStepMessages(userId, messages) {
+async function sendStepMessages(userId, messages) {
   const LINE_TOKEN = process.env.LINE_CHANNEL_TOKEN;
   const url = 'https://api.line.me/v2/bot/message/push';
 
-  messages.forEach((message, i) => {
-    setTimeout(() => {
-      axios.post(
+  for (const message of messages) {
+    try {
+      await axios.post(
         url,
         {
           to: userId,
@@ -101,13 +104,15 @@ function sendStepMessages(userId, messages) {
             Authorization: `Bearer ${LINE_TOKEN}`
           }
         }
-      ).then(() => {
-        console.log(`✅ 傳送訊息：「${message}」`);
-      }).catch(err => {
-        console.error('❌ 傳送錯誤：', err.response?.data || err.message);
-      });
-    }, i * 1200); // 每句間隔 1.2 秒
-  });
+      );
+      console.log(`✅ 傳送訊息：「${message}」`);
+    } catch (err) {
+      console.error('❌ 傳送錯誤：', err.response?.data || err.message);
+    }
+
+    // 每句話之間停 1.2 秒
+    await delay(1200);
+  }
 }
 
 // === 回覆文字訊息 ===
