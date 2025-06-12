@@ -58,7 +58,7 @@ app.post('/webhook', async (req, res) => {
             `好的，你想抽 ${num} 張牌 🃏`,
             `請問你想怎麼抽？`,
             `1️⃣ 隨機抽`,
-            `2️⃣ 輸入 ${num} 個號碼（例如：5 22 74）`
+            `2️⃣ 輸入 ${num} 個號碼（例如：${generateExampleNumbers(num).join(' ')}）`
           ]);
           return;
         }
@@ -91,4 +91,11 @@ async function sendStepMessages(userId, messages, delay = 800) {
       }
     );
   }
+}
+function generateExampleNumbers(n) {
+  const numbers = new Set();
+  while (numbers.size < n) {
+    numbers.add(Math.floor(Math.random() * 78) + 1);
+  }
+  return Array.from(numbers);
 }
