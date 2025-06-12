@@ -31,6 +31,33 @@ app.post('/webhook', async (req, res) => {
           '請問你這次想抽幾張牌？請輸入 1～5 的數字'
         ]);
       }
+          if (userState[userId]?.stage === 'await_card_count') {
+      const numberMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '壹': 1, '貳': 2, '參': 3, '肆': 4, '伍': 5 };
+      const match = userMessage.match(/(?:抽|想.*抽)?\s*([1-5]|[一二三四五壹貳參肆伍])\s*張?/);
+
+      if (match) {
+        let num = match[1];
+        if (isNaN(num)) {
+          num = numberMap[num];
+        } else {
+          num = parseInt(num);
+        }
+
+        if (num >= 1 && num <= 5) {
+          // 更新狀態
+          userState[userId].stage = 'await_draw_method';
+          userState[userId].numCards = num;
+
+          await replyText(replyToken, [
+            `好的，你想抽 ${num} 張牌 🃏`,
+            `請問你想怎麼抽？`,
+            `1️⃣ 隨機抽`,
+            `2️⃣ 輸入 ${num} 個號碼（例如：5 22 74）`
+          ]);
+          return;
+        }
+      }
+    }
     }
   }
 
@@ -46,15 +73,14 @@ app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
 
-async function replyText(replyToken, messages) {
-  const replyMessages = messages.map(text => ({ type: 'text', text }));
-
-  try {
+async function sendStepMessages(userId, messages, delay = 800) {
+  for (let i = 0; i < messages.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, i * delay));
     await axios.post(
-      'https://api.line.me/v2/bot/message/reply',
+      'https://api.line.me/v2/bot/message/push',
       {
-        replyToken,
-        messages: replyMessages
+        to: userId,
+        messages: [{ type: 'text', text: messages[i] }]
       },
       {
         headers: {
@@ -63,8 +89,5 @@ async function replyText(replyToken, messages) {
         }
       }
     );
-    console.log('✅ 成功回覆 LINE 使用者');
-  } catch (err) {
-    console.error('❌ 回覆失敗：', err.response?.data || err.message);
   }
 }
